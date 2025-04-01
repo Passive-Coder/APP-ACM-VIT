@@ -322,6 +322,7 @@ const SetScreen = () => {
   };
   useEffect(() => {
     loadCurrentUser();
+    console.log('working');
   }, []);
   const [question, setQuestion] = useState('');
   const [option1, setOption1] = useState('');
@@ -343,9 +344,11 @@ const SetScreen = () => {
       let storedQuestions = await AsyncStorage.getItem(`${currentUser} questions`);
       storedQuestions = storedQuestions ? JSON.parse(storedQuestions) : [];
       let content = Object.values(storedQuestions);
+      console.log(content);
       let permission = 1;
       for(let key in content){
-        if(newQuestion.question === content['question']){
+        console.log(content[key]['question']);
+        if(newQuestion.question === content[key]['question']){
           Alert.alert('Cannot create duplicate questions');
           permission = 0;
           break;
