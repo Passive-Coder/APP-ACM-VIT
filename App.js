@@ -1,11 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { TouchableOpacity, Text, View, FlatList, TextInput, Alert, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { TouchableOpacity, Text, View, FlatList, TextInput, Alert, StyleSheet, Image, SafeAreaView, StatusBar } from 'react-native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { CheckBox } from 'react-native-elements';
+import SplashScreen from 'react-native-splash-screen';
 const Stack = createStackNavigator();
+
+const Splash = ({ navigation }) => {
+  useEffect(() => {
+    setTimeout(() => {
+      navigation.replace('login'); 
+    }, 2500);
+  }, []);
+
+  return (
+    <View style={{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgb(217, 214, 230)'
+    }}>
+      <Image source={require('./quiz-logo.png')} style={{ width: 100, height: 100 }} />
+    </View>
+  );
+};
+
 const HomeScreen = ({ navigation }) => {
   const [currentUser, setcurrentUser] = useState('');
   const loadCurrentUser = async () => {
@@ -16,6 +37,12 @@ const HomeScreen = ({ navigation }) => {
     loadCurrentUser();
   }, []);
   return (
+    <SafeAreaView
+    style={{
+      flex: 1,
+      backgroundColor: 'purple',
+      paddingTop: StatusBar.currentHeight
+    }}>
     <View
     style={{
       flex: 1,
@@ -118,6 +145,7 @@ const HomeScreen = ({ navigation }) => {
       flex: 0.02
     }}/>
     </View>
+    </SafeAreaView>
   );
 };
 
@@ -271,9 +299,30 @@ const QuizScreen = () => {
   // Pagination logic
   const questionsToShow = questionsList.slice(currentIndex, currentIndex + 5);
   const hasNext = currentIndex + 5 < questionsList.length;
-
+  const back = '< Back';
+  const navigation = useNavigation();
+  const goBack = () => {
+    navigation.navigate('Home'); 
+  }
   return (
+    <SafeAreaView
+    style={{
+      flex: 1,
+      backgroundColor: 'rgb(120,0,120)',
+      paddingTop: StatusBar.currentHeight
+    }}>
     <View style={{ flex: 1, padding: 20, backgroundColor: 'rgb(120,0,120)' }}>
+      <TouchableOpacity
+      onPress={goBack}>
+        <Text
+        style={{
+          color:'white',
+          fontSize: 18,
+          fontWeight: 'bold'
+        }}>
+         {back}
+        </Text>
+      </TouchableOpacity>
       <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 }}>
         Quiz Questions
       </Text>
@@ -311,6 +360,7 @@ const QuizScreen = () => {
         <Text style={{ fontSize: 16, color: 'white', fontWeight:'bold', marginBottom: 10 }}>❌ Incorrect: {incorrectCount}</Text>
       </View>
     </View>
+    </SafeAreaView>
   );
 };
 
@@ -329,7 +379,7 @@ const SetScreen = () => {
   const [option2, setOption2] = useState('');
   const [option3, setOption3] = useState('');
   const [option4, setOption4] = useState('');
-  const [correctAnswer, setCorrectAnswer] = useState('');
+  const [correctAnswer, setCorrectAnswer] = useState('\0');
 
   const allOptionsFilled = option1 && option2 && option3 && option4;
   
@@ -370,7 +420,37 @@ const SetScreen = () => {
       console.error('Error fetching questions: ', error);
     }
   };
+  const back = '< Back';
+  const navigation = useNavigation();
+  const clearText = () => {
+    setCorrectAnswer('');
+    setOption1('');
+    setOption2('');
+    setOption3('');
+    setOption4('');
+    setQuestion('');
+  };
   return (
+    <SafeAreaView
+    style={{
+      flex: 1,
+      backgroundColor: 'white',
+      paddingTop: StatusBar.currentHeight + 20
+    }}>
+      <TouchableOpacity
+      onPress={() => navigation.navigate('Home')}
+      style={{
+        marginLeft: 20
+      }}>
+        <Text
+        style={{
+          color:'black',
+          fontSize: 18,
+          fontWeight: 'bold'
+        }}>
+         {back}
+        </Text>
+      </TouchableOpacity>
     <View style={{ flex: 1, padding: 20, justifyContent: 'center' }}>
       <TextInput
         placeholder="Start Typing your Question"
@@ -461,121 +541,154 @@ const SetScreen = () => {
       >
         <Text style={{ color: 'white', fontWeight: 'bold' }}>Submit</Text>
       </TouchableOpacity>
+      <TouchableOpacity
+        onPress={clearText}
+        style={{
+          marginTop: 10,
+          backgroundColor: 'rgb(240, 50, 50)',
+          padding: 10,
+          borderRadius: 5,
+          alignItems: 'center',
+        }}
+      >
+        <Text style={{ color: 'white', fontWeight: 'bold' }}>Clear all</Text>
+      </TouchableOpacity>
     </View>
+    </SafeAreaView>
   );
 };
+
 const DeleteScreen = () => {
   const [currentUser, setCurrentUser] = useState('');
   const [questionsList, setQuestionsList] = useState([]);
-  const [selectedIndices, setSelectedIndices] = useState(new Set());
+  const [selectedIndices, setSelectedIndices] = useState([]);
+  const navigation = useNavigation();
 
+  // Load current user from AsyncStorage
   useEffect(() => {
     const loadCurrentUser = async () => {
-      const userr = await AsyncStorage.getItem('currentUser');
-      setCurrentUser(userr ? userr : '');
+      const user = await AsyncStorage.getItem('currentUser');
+      setCurrentUser(user || '');
     };
     loadCurrentUser();
   }, []);
 
+  // Fetch questions from AsyncStorage
   const fetchQuestions = async () => {
     try {
-      const questions = await AsyncStorage.getItem(`${currentUser} questions`);
-      setQuestionsList(questions ? JSON.parse(questions) : []);
+      if (currentUser) {
+        const storedQuestions = await AsyncStorage.getItem(`${currentUser} questions`);
+        setQuestionsList(storedQuestions ? JSON.parse(storedQuestions) : []);
+      }
     } catch (error) {
       console.error('Error fetching questions:', error);
     }
   };
 
+  // Refresh questions when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       fetchQuestions();
     }, [currentUser])
   );
 
+  // Toggle question selection
   const toggleSelection = (question) => {
-    setSelectedIndices((prevSelected) => {
-      const newSet = new Set(prevSelected);
-      newSet.has(question) ? newSet.delete(question) : newSet.add(question);
-      return newSet;
-    });
+    setSelectedIndices((prevSelected) =>
+      prevSelected.includes(question)
+        ? prevSelected.filter((q) => q !== question) // Remove if already selected
+        : [...prevSelected, question] // Add if not selected
+    );
   };
 
+  // Remove selected questions
   const removeSelectedQuestions = async () => {
-    const updatedList = questionsList.filter(
-      (item) => !selectedIndices.has(item.question)
-    );
+    const updatedList = questionsList.filter((item) => !selectedIndices.includes(item.question));
     setQuestionsList(updatedList);
-    setSelectedIndices(new Set());
+    setSelectedIndices([]); // Reset selected questions
+
     try {
       await AsyncStorage.setItem(`${currentUser} questions`, JSON.stringify(updatedList));
+      Alert.alert('Selected items deleted!');
     } catch (error) {
       console.error('Error updating questions:', error);
     }
   };
 
+  // Delete all questions
   const deleteAllQuestions = async () => {
     setQuestionsList([]);
-    setSelectedIndices(new Set());
+    setSelectedIndices([]);
+
     try {
       await AsyncStorage.removeItem(`${currentUser} questions`);
+      Alert.alert('All questions deleted!');
     } catch (error) {
       console.error('Error deleting all questions:', error);
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white', padding: 20 }}>
-      {questionsList.length === 0 ? (
-        <Text style={{ textAlign: 'center', marginVertical: 20 }}>No Questions Available</Text>
-      ) : (
-        <FlatList
-          data={questionsList}
-          keyExtractor={(item) => item.question}
-          renderItem={({ item }) => (
-            <View
-              style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#ccc' }}
-            >
-              <CheckBox
-                value={selectedIndices.has(item.question)}
-                onValueChange={() => toggleSelection(item.question)}
-              />
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={{ fontWeight: 'bold' }}>{item.question}</Text>
-                <Text>Correct Answer: {item.correct}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'white', paddingTop: StatusBar.currentHeight + 20 }}>
+      {/* Back Button */}
+      <TouchableOpacity onPress={() => navigation.navigate('Home')} style={{ marginLeft: 20 }}>
+        <Text style={{ color: 'black', fontSize: 18, fontWeight: 'bold' }}>{'< Back'}</Text>
+      </TouchableOpacity>
+
+      {/* Main Content */}
+      <View style={{ flex: 1, backgroundColor: 'white', padding: 20 }}>
+        {questionsList.length === 0 ? (
+          <Text style={{ textAlign: 'center', marginVertical: 20 }}>No Questions Available</Text>
+        ) : (
+          <FlatList
+            data={questionsList}
+            keyExtractor={(item) => item.question}
+            renderItem={({ item }) => (
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 10, borderBottomWidth: 1, borderColor: '#ccc' }}>
+                <CheckBox
+                  checked={selectedIndices.includes(item.question)}
+                  onPress={() => toggleSelection(item.question)}
+                />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={{ fontWeight: 'bold' }}>{item.question}</Text>
+                  <Text>Correct Answer: {item.correct}</Text>
+                </View>
               </View>
-            </View>
-          )}
-        />
-      )}
-      <TouchableOpacity
-        onPress={removeSelectedQuestions}
-        disabled={selectedIndices.size === 0}
-        style={{
-          marginTop: 20,
-          backgroundColor: selectedIndices.size > 0 ? 'red' : 'gray',
-          padding: 10,
-          borderRadius: 5,
-          alignItems: 'center',
-        }}
-      >
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>Delete Selected</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={deleteAllQuestions}
-        style={{
-          marginTop: 10,
-          backgroundColor: 'black',
-          padding: 10,
-          borderRadius: 5,
-          alignItems: 'center',
-        }}
-      >
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>Delete All</Text>
-      </TouchableOpacity>
-    </View>
+            )}
+          />
+        )}
+
+        {/* Delete Buttons */}
+        <TouchableOpacity
+          onPress={removeSelectedQuestions}
+          disabled={selectedIndices.length === 0}
+          style={{
+            marginTop: 20,
+            backgroundColor: selectedIndices.length > 0 ? 'red' : 'gray',
+            padding: 10,
+            borderRadius: 5,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>Delete Selected</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={deleteAllQuestions}
+          style={{
+            marginTop: 10,
+            backgroundColor: 'black',
+            padding: 10,
+            borderRadius: 5,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>Delete All</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
-
 const LoginScreen = ({ navigation }) => {  // Accept navigation prop
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -671,11 +784,12 @@ const App = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-      <Stack.Screen name="login" component={LoginScreen}/>
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Quiz" component={QuizScreen} />
-        <Stack.Screen name="Set" component={SetScreen} />
-        <Stack.Screen name='Delete' component={DeleteScreen}/>
+        <Stack.Screen name='splash' component={Splash} options={{headerShown: false}}/>
+        <Stack.Screen name="login" component={LoginScreen} options={{headerShown: false}}/>
+        <Stack.Screen name="Home" component={HomeScreen} options={{headerShown: false}}/>
+        <Stack.Screen name="Quiz" component={QuizScreen} options={{headerShown: false}}/>
+        <Stack.Screen name="Set" component={SetScreen} options={{headerShown: false}}/>
+        <Stack.Screen name='Delete' component={DeleteScreen} options={{headerShown: false}}/>
       </Stack.Navigator>
     </NavigationContainer>
   );
